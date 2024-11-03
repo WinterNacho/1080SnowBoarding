@@ -1,3 +1,6 @@
 [submodule "ThirdParty/ogre"]
 	path = ThirdParty/ogre
 	url = git@github.com:OGRECave/ogre.git
+[submodule "ThirdParty/rapidcsv"]
+	path = ThirdParty/rapidcsv
+	url = git@github.com:d99kris/rapidcsv.git
