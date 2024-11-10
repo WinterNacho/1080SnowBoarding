@@ -5,6 +5,7 @@
 #include <OgreFileSystemLayer.h>
 #include "rapidcsv.h"
 #include <stdlib.h>
+#include "rider.h"
 
 class SnowBoarding : public OgreBites::ApplicationContext, public OgreBites::InputListener {
 public:
@@ -16,6 +17,7 @@ public:
 	void moveCamera(float deltaTime);
 	void moveCameraLado(float deltaTime);
 	void rotateCamera(float deltaTime);
+	void rotateCameraWow(float deltaTime);
 private:
 	Ogre::SceneNode* camNode; // Almacena el nodo de la cámara
 	float moveSpeed; // Velocidad de movimiento de la cámara
@@ -43,7 +45,7 @@ void SnowBoarding::setup() {
 	light->setCastShadows(true);
 	Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	lightNode->setDirection(0, 1, -1);
-	lightNode->setPosition(0, 0, 20);
+	lightNode->setPosition(0, 10, -10);
 	lightNode->attachObject(light);
 
 
@@ -52,23 +54,28 @@ void SnowBoarding::setup() {
 	cam->setNearClipDistance(0.1);
 	cam->setAutoAspectRatio(false);
 	camNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-	camNode->lookAt(Ogre::Vector3(0, 0, 0), Ogre::Node::TS_PARENT);
-	camNode->pitch(Ogre::Degree(-60));
-	camNode->setPosition(0, 60, 30);
+	camNode->yaw(Ogre::Degree(180));
+	camNode->pitch(Ogre::Degree(-15));
+	camNode->setPosition(0, 250, -40);
+	//camNode->lookAt(Ogre::Vector3(0, 0, 0), Ogre::Node::TS_PARENT);
 	camNode->attachObject(cam);
 
 	Ogre::Viewport* viewport = getRenderWindow()->addViewport(cam);
 	viewport->setBackgroundColour(Ogre::ColourValue(0.1f, 0.2f, 0.5f));
 
-	// brick
-	//Ogre::Entity* brickEntity = scnMgr->createEntity("brick1", "brick.obj");
-	//Ogre::SceneNode* brickNode = scnMgr->createSceneNode();
-	//
-	//scnMgr->getRootSceneNode()->addChild(brickNode);
+	// player
+	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "brick.obj");
+	Ogre::SceneNode* playerNode = scnMgr->createSceneNode();
+	Rider* player = new Rider(playerNode, camNode);
+	
+	scnMgr->getRootSceneNode()->addChild(playerNode);
+	player->setPosition(Ogre::Vector3(0,0,0));
+	playerNode->pitch(Ogre::Degree(90));
 
-	//brickNode->setPosition(0,0,0);
-	//brickNode->yaw(Ogre::Degree(90));
-	//brickNode->attachObject(brickEntity);
+	playerNode->attachObject(playerEntity);
+
+	addInputListener(player);
+	root->addFrameListener(player);
 
 	// map
 	// Crear un material con una textura
@@ -97,7 +104,7 @@ void SnowBoarding::setup() {
 	//ground->triangle(0, 1, 2);
 	//ground->triangle(0, 2, 3);
 
-	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/pista_con_acera.csv");
+	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/pista_con_acera_gaussiana_compuesta.csv");
 
 	std::vector<float> xCoords = doc.GetColumn<float>("x");
 	std::vector<float> yCoords = doc.GetColumn<float>("y");
@@ -109,35 +116,19 @@ void SnowBoarding::setup() {
 		std::cout << xCoords[i] << yCoords[i] << zCoords[i] << std::endl;
 		ground->position(xCoords[i], yCoords[i], zCoords[i]);
 	}
-	int numPuntos = xCoords.size();
+	int numVertices = xCoords.size();
 
-	// Calcular el número de columnas
-	int numColumnas = 0;
-	while (numColumnas * (numColumnas + 1) < numPuntos) {
-		numColumnas++;
+	int numColumnas = 287;
+	int numFilas = 7;
+		ground->triangle(0, 7, 1);
+	ground->triangle(1, 7, 8);
+	for (int i = 0; i < numVertices; i++) {
+		if ((i+1) % numFilas == 0)
+			continue;
+		ground->triangle(i, i+numFilas, i+1);
+		ground->triangle(i+1, i+numFilas, i+numFilas+1);
 	}
 
-    // Calcular el número de filas
-    int numFilas = numPuntos / numColumnas;
-
-	for (int fila = 0; fila < numFilas - 1; ++fila) {
-		for (int columna = 0; columna < numColumnas - 1; ++columna) {
-			// Índices de los puntos en la cuadrícula
-			int v0 = fila * numColumnas + columna;        // Inferior izquierda
-			int v1 = v0 + 1;                              // Inferior derecha
-			int v2 = v0 + numColumnas;                   // Superior izquierda
-			int v3 = v2 + 1;                              // Superior derecha
-
-			// Crear dos triángulos para cada cuadrado
-			ground->triangle(v0, v1, v2);  // Triángulo 1 (v0, v1, v2)
-			ground->triangle(v1, v3, v2);  // Triángulo 2 (v1, v3, v2)
-			ground->triangle(v0, v2, v1);  // Triángulo 1 (v0, v1, v2)
-			ground->triangle(v1, v2, v3);  // Triángulo 2 (v1, v3, v2)
-		}
-	}
-	// Definir triángulos automáticamente en función de la anchura de la cuadrícula
-	//ground->triangle(0, 1, 2);
-	//ground->triangle(0, 2, 3);
 	ground->end();
 
 	// Attach the ground to the scene
@@ -150,45 +141,39 @@ bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
 	if (evt.keysym.sym == OgreBites::SDLK_ESCAPE) {
 		getRoot()->queueEndRendering();
 	}
-	if (evt.keysym.sym == OgreBites::SDLK_UP) {
-		moveCamera(-1); // Mueve la cámara hacia adelante
-	}
-	if (evt.keysym.sym == OgreBites::SDLK_DOWN) {
-		moveCamera(1); // Mueve la cámara hacia atrás
-	}
-	if (evt.keysym.sym == OgreBites::SDLK_LEFT) {
-		moveCameraLado(-1); // Mueve la cámara hacia adelante
-		//rotateCamera(-30); // Mueve la cámara hacia atrás
-	}
-	if (evt.keysym.sym == OgreBites::SDLK_RIGHT) {
-		moveCameraLado(1); // Mueve la cámara hacia atrás
-	}
-	if (evt.keysym.sym == 'z') {
-		rotateCamera(1); // Mueve la cámara hacia atrás
-	}
-	if (evt.keysym.sym == 'x') {
-		rotateCamera(-1); // Mueve la cámara hacia atrás
-	}
+	//if (evt.keysym.sym == OgreBites::SDLK_UP) {
+	//	moveCamera(-1); // Mueve la cámara hacia adelante
+	//}
+	//if (evt.keysym.sym == OgreBites::SDLK_DOWN) {
+	//	moveCamera(1); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == OgreBites::SDLK_LEFT) {
+	//	moveCameraLado(-1); // Mueve la cámara hacia adelante
+	//	//rotateCamera(-30); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == OgreBites::SDLK_RIGHT) {
+	//	moveCameraLado(1); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == 'z') {
+	//	rotateCamera(1); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == 'x') {
+	//	rotateCamera(-1); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == 'c') {
+	//	rotateCameraWow(1); // Mueve la cámara hacia atrás
+	//}
+	//if (evt.keysym.sym == 'v') {
+	//	rotateCameraWow(-1); // Mueve la cámara hacia atrás
+	//}
 	return true;
+}
+void SnowBoarding::rotateCameraWow(float direction) {
+	camNode->rotate(Ogre::Vector3(1, 0, 0), Ogre::Degree(direction * moveSpeed), Ogre::Node::TS_WORLD);
 }
 
 void SnowBoarding::rotateCamera(float direction) {
-	// direction es -1 para adelante y 1 para atrás
-	// Dirección de rotación (-1 para sentido horario, 1 para antihorario)
-	Ogre::Real angle = Ogre::Degree(moveSpeed * direction).valueRadians();
-
-	// Obtener la posición actual de la cámara relativa al origen
-	Ogre::Vector3 camPos = camNode->getPosition();
-
-	// Calcular la nueva posición rotada alrededor del eje Y
-	Ogre::Real newX = camPos.x * cos(angle) - camPos.z * sin(angle);
-	Ogre::Real newZ = camPos.x * sin(angle) + camPos.z * cos(angle);
-
-	// Actualizar la posición de la cámara manteniendo la distancia al origen
-	camNode->setPosition(newX, camPos.y, newZ);
-
-	// Asegurar que la cámara siempre mire hacia el origen
-	camNode->lookAt(Ogre::Vector3(0, 0, 0), Ogre::Node::TS_WORLD);
+	camNode->rotate(Ogre::Vector3(0, 1, 0), Ogre::Degree(direction * moveSpeed),Ogre::Node::TS_WORLD);
 }
 void SnowBoarding::moveCamera(float direction) {
 	// direction es -1 para adelante y 1 para atrás
