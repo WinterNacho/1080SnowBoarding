@@ -6,6 +6,8 @@
 #include "rapidcsv.h"
 #include <stdlib.h>
 #include "rider.h"
+#include "ramp.h"
+#include "utils.h"
 
 class SnowBoarding : public OgreBites::ApplicationContext, public OgreBites::InputListener {
 public:
@@ -14,10 +16,6 @@ public:
 
     void setup();
     bool keyPressed(const OgreBites::KeyboardEvent& evt);
-	void moveCamera(float deltaTime);
-	void moveCameraLado(float deltaTime);
-	void rotateCamera(float deltaTime);
-	void rotateCameraWow(float deltaTime);
 private:
 	Ogre::SceneNode* camNode; // Almacena el nodo de la cámara
 	float moveSpeed; // Velocidad de movimiento de la cámara
@@ -43,11 +41,17 @@ void SnowBoarding::setup() {
 	Ogre::Light* light = scnMgr->createLight("MainLight");
 	light->setType(Ogre::Light::LightTypes::LT_POINT);
 	light->setCastShadows(true);
-	Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-	lightNode->setDirection(0, 1, -1);
-	lightNode->setPosition(0, 10, -10);
-	lightNode->attachObject(light);
 
+	// Ajusta la intensidad de la luz
+	light->setDiffuseColour(0.3f, 0.3f, 0.3f); // Color difuso ligeramente menor
+	light->setSpecularColour(0.1f, 0.1f, 0.1f); // Color especular (blanco brillante)
+	light->setPowerScale(5.0f); // Aumenta la intensidad de la luz
+
+
+	Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
+	lightNode->setDirection(0, -1, 0);
+	lightNode->setPosition(10, 40, -10);
+	lightNode->attachObject(light);
 
 	// Camera
 	Ogre::Camera* cam = scnMgr->createCamera("myCam");
@@ -57,76 +61,61 @@ void SnowBoarding::setup() {
 	camNode->yaw(Ogre::Degree(180));
 	camNode->pitch(Ogre::Degree(-15));
 	camNode->setPosition(0, 250, -40);
-	//camNode->lookAt(Ogre::Vector3(0, 0, 0), Ogre::Node::TS_PARENT);
 	camNode->attachObject(cam);
 
 	Ogre::Viewport* viewport = getRenderWindow()->addViewport(cam);
 	viewport->setBackgroundColour(Ogre::ColourValue(0.1f, 0.2f, 0.5f));
-
+	
 	// player
 	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "brick.obj");
 	Ogre::SceneNode* playerNode = scnMgr->createSceneNode();
 	Rider* player = new Rider(playerNode, camNode);
 	
 	scnMgr->getRootSceneNode()->addChild(playerNode);
-	player->setPosition(Ogre::Vector3(0,0,0));
+	player->setPosition(Ogre::Vector3(10,0,0));
 	playerNode->pitch(Ogre::Degree(90));
-
+	playerNode->scale(Ogre::Vector3(0.5, 0.5, 0.5));
 	playerNode->attachObject(playerEntity);
 
 	addInputListener(player);
 	root->addFrameListener(player);
 
-	// map
+	// Map
 	// Crear un material con una textura
 	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().create("GroundMaterial", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 	material->getTechnique(0)->getPass(0)->createTextureUnitState("grass.jpg");
 	material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
 
-	// Crear el objeto ManualObject para el suelo
+	// Ground
 	Ogre::ManualObject* ground = scnMgr->createManualObject("Ground");
-	// Define the material
-	ground->begin("GroundMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST); // Cambia "BaseWhite" por "GroundMaterial"
+	ground->begin("GroundMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-	//// Add vertices
-	//ground->position(0, 0, 0); // Vertex 0
-	//ground->position(0, 0, 5); // Vertex 2
-	//ground->position(5, 2, 5); // Vertex 2
-	//ground->position(5, 0, 0); // Vertex 3
 
-	////// Define texture coordinates (optional)
-	//ground->textureCoord(0, 0);
-	//ground->textureCoord(1, 0);
-	//ground->textureCoord(1, 1);
-	//ground->textureCoord(0, 1);
-
-	//// Define the triangles (two triangles to form a quad)
-	//ground->triangle(0, 1, 2);
-	//ground->triangle(0, 2, 3);
-
-	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/pista_con_acera_gaussiana_compuesta.csv");
+	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/map.csv");
 
 	std::vector<float> xCoords = doc.GetColumn<float>("x");
 	std::vector<float> yCoords = doc.GetColumn<float>("y");
 	std::vector<float> zCoords = doc.GetColumn<float>("z");
 
+	int numColumnas = 120;
+	int numFilas = 8;
 
 	for (size_t i = 0; i < xCoords.size(); ++i) {
-
-		std::cout << xCoords[i] << yCoords[i] << zCoords[i] << std::endl;
 		ground->position(xCoords[i], yCoords[i], zCoords[i]);
+		float u = (float)(i % numFilas) / (numFilas - 1);
+		float v = (float)(i / numColumnas) / (numColumnas - 1);
+		ground->textureCoord(u, v);
 	}
 	int numVertices = xCoords.size();
 
-	int numColumnas = 287;
-	int numFilas = 7;
-		ground->triangle(0, 7, 1);
-	ground->triangle(1, 7, 8);
 	for (int i = 0; i < numVertices; i++) {
-		if ((i+1) % numFilas == 0)
+		if (((i + 1) % numFilas == 0) or (i > numVertices - numFilas-1)) {
 			continue;
+		}
 		ground->triangle(i, i+numFilas, i+1);
 		ground->triangle(i+1, i+numFilas, i+numFilas+1);
+		std::cout << i << " " << i + numFilas << " " << i + 1 << std::endl;
+		std::cout << i+1 << " " << i + numFilas << " " << i + numFilas + 1 << std::endl;
 	}
 
 	ground->end();
@@ -135,54 +124,34 @@ void SnowBoarding::setup() {
 	Ogre::SceneNode* groundNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	groundNode->attachObject(ground);
 
+	scnMgr->setSkyBox(true, "skybox", 100);
+
+
+	// ramp
+	Ogre::Entity* ramp1Entity = scnMgr->createEntity("ramp1", "ramp.obj");
+	Ogre::SceneNode* ramp1Node = scnMgr->createSceneNode();
+	ramp1Node->yaw(Ogre::Degree(90));
+	ramp1Node->pitch(Ogre::Degree(-90));
+	Ramp* ramp1 = new Ramp(ramp1Node, player, Ogre::Vector3(10, altura(10, 70), 70));
+	ramp1->setup();
+	scnMgr->getRootSceneNode()->addChild(ramp1Node);
+	//player->setPosition(Ogre::Vector3(10, 0, 0));
+	//playerNode->pitch(Ogre::Degree(90));
+	//playerNode->scale(Ogre::Vector3(0.5, 0.5, 0.5));
+	ramp1Node->attachObject(ramp1Entity);
+
+	//addInputListener(player);
+	root->addFrameListener(ramp1);
+
 }
 
 bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
 	if (evt.keysym.sym == OgreBites::SDLK_ESCAPE) {
 		getRoot()->queueEndRendering();
 	}
-	//if (evt.keysym.sym == OgreBites::SDLK_UP) {
-	//	moveCamera(-1); // Mueve la cámara hacia adelante
-	//}
-	//if (evt.keysym.sym == OgreBites::SDLK_DOWN) {
-	//	moveCamera(1); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == OgreBites::SDLK_LEFT) {
-	//	moveCameraLado(-1); // Mueve la cámara hacia adelante
-	//	//rotateCamera(-30); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == OgreBites::SDLK_RIGHT) {
-	//	moveCameraLado(1); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == 'z') {
-	//	rotateCamera(1); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == 'x') {
-	//	rotateCamera(-1); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == 'c') {
-	//	rotateCameraWow(1); // Mueve la cámara hacia atrás
-	//}
-	//if (evt.keysym.sym == 'v') {
-	//	rotateCameraWow(-1); // Mueve la cámara hacia atrás
-	//}
 	return true;
 }
-void SnowBoarding::rotateCameraWow(float direction) {
-	camNode->rotate(Ogre::Vector3(1, 0, 0), Ogre::Degree(direction * moveSpeed), Ogre::Node::TS_WORLD);
-}
 
-void SnowBoarding::rotateCamera(float direction) {
-	camNode->rotate(Ogre::Vector3(0, 1, 0), Ogre::Degree(direction * moveSpeed),Ogre::Node::TS_WORLD);
-}
-void SnowBoarding::moveCamera(float direction) {
-	// direction es -1 para adelante y 1 para atrás
-	camNode->translate(0, 0, moveSpeed * direction);
-}
-void SnowBoarding::moveCameraLado(float direction) {
-	// direction es -1 para adelante y 1 para atrás
-	camNode->translate(moveSpeed * direction, 0, 0);
-}
 int main() {
 	try {
 		SnowBoarding app;
