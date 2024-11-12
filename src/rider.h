@@ -25,8 +25,12 @@ private:
     Ogre::SceneNode* mNode;
     Ogre::SceneNode* mCamNode;
     Ogre::Vector3 riderPos;
-    float xSpeed = 25.0;
+    float xSpeed = 20.0;
     float zSpeed = 30.0;
+    float ySpeed = 0.0;
+    float gravity = 50.0;
+    float mRoll = 20;
+    float mPitch = 0;
     Ogre::Vector3 camDisplacement = Ogre::Vector3(0, 8, -20);
     enum class Direction : char { Left, Right, Up, Down, None };
 

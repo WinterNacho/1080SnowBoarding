@@ -1,11 +1,11 @@
-#include "ramp.h"
+#include "tree.h"
 #include <iostream>
 
-void Ramp::setup() {
+void Tree::setup() {
     mNode->setPosition(position);
 }
 
-bool Ramp::collision(const Ogre::Vector3& point) const {
+bool Tree::collision(const Ogre::Vector3& point) const {
     Ogre::Vector3 worldMin = position + minCorner;
     Ogre::Vector3 worldMax = position + maxCorner;
 
@@ -14,14 +14,14 @@ bool Ramp::collision(const Ogre::Vector3& point) const {
         point.z >= worldMin.z && point.z <= worldMax.z);
 }
 
-void Ramp::setPosition(const Ogre::Vector3& pos) {
+void Tree::setPosition(const Ogre::Vector3& pos) {
     mNode->setPosition(pos);
     position = pos;
 }
-bool Ramp::frameStarted(const Ogre::FrameEvent& evt) {
+bool Tree::frameStarted(const Ogre::FrameEvent& evt) {
     float dt = evt.timeSinceLastFrame;
     if (collision(player->getPosition())) {
-        player->collision(State::Jumped);
+        player->collision(State::Stunned);
     }
     return true;
 }

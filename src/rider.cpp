@@ -49,11 +49,15 @@ Ogre::Vector3 Rider::getPosition() {
 }
 
 void Rider::collision(State st) {
-    if (st == State::Stunned) {}
-    else if (st== State::Jumped){
-        state = st;
-
+    switch (st)
+    {
+    case State::Stunned:
+        break;
+    case State::Jumped:
+        ySpeed = 35.0;
+        break;
     }
+    state = st;
 }
 
 
@@ -75,44 +79,50 @@ bool Rider::axisMoved(const OgreBites::AxisEvent& evt) {
 
     return true;
 }
-
 bool Rider::frameStarted(const Ogre::FrameEvent& evt) {
     float dt = evt.timeSinceLastFrame;
-    //std::cout << "Player: " << riderPos.x << " " << riderPos.y << " " << riderPos.z << std::endl;
-    if (state == State::Stunned) {
-        direction = Direction::None;
+
+    switch (state)
+    {
+    case State::Stunned:
         zSpeed = 0.0;
-    }
-    else if (state == State::Jumped) {
-        zSpeed = 45.0;
-        if(altura(riderPos.x, riderPos.z) >= riderPos.y){
+        break;
+
+    case State::Jumped:
+        zSpeed =80.0;
+        mNode->pitch(Ogre::Radian(0.22));
+        mPitch += 0.22;
+        if (altura(riderPos.x, riderPos.z) >= riderPos.y) {
             state = State::Normal;
+            mNode->pitch(Ogre::Radian(-mPitch));
         }
-        else
-            setPosition(Ogre::Vector3(riderPos.x, riderPos.y - 0.1 * dt, riderPos.z + zSpeed * dt));
-    }
-    else if (state==State::Normal) {
+        break;
+    case State::Normal:
         zSpeed = 30.0;
-        setPosition(Ogre::Vector3(riderPos.x, altura(riderPos.x, riderPos.z + zSpeed * dt), riderPos.z + zSpeed * dt));
         switch (direction)
         {
         case Direction::Left:
-            setPosition(Ogre::Vector3(std::min(20.5f, riderPos.x + xSpeed * dt), riderPos.y, riderPos.z));
+            riderPos.x = std::min(20.5f, riderPos.x + xSpeed * dt);
+            mCamNode->roll(Ogre::Degree(0.2));
             break;
         case Direction::Right:
-            setPosition(Ogre::Vector3(std::max(0.5f, riderPos.x - xSpeed * dt), riderPos.y, riderPos.z));
+            riderPos.x = std::max(0.5f, riderPos.x - xSpeed * dt);
+            mCamNode->roll(Ogre::Degree(-0.2));
             break;
         case Direction::Up:
-            setPosition(Ogre::Vector3(riderPos.x, riderPos.y, riderPos.z + xSpeed * dt));
+            riderPos.z = riderPos.z + xSpeed * dt;
             break;
         case Direction::Down:
-            setPosition(Ogre::Vector3(riderPos.x, riderPos.y, riderPos.z - xSpeed * dt));
-            break;
-        case Direction::None:
-        default:
+            riderPos.z = riderPos.z - xSpeed * dt;
             break;
         }
+        break;
     }
-    
+    riderPos.z += zSpeed * dt;
+    setPosition(Ogre::Vector3(riderPos.x, std::max(altura(riderPos.x, riderPos.z), riderPos.y + ySpeed*dt), riderPos.z));
+    ySpeed -= gravity * dt;
+
+    // roll
+    //mCamNode->roll(Ogre::Degree(mRoll));
     return true;
 }

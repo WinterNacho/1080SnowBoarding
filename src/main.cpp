@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "rider.h"
 #include "ramp.h"
+#include "tree.h"
 #include "utils.h"
 
 class SnowBoarding : public OgreBites::ApplicationContext, public OgreBites::InputListener {
@@ -16,9 +17,15 @@ public:
 
     void setup();
     bool keyPressed(const OgreBites::KeyboardEvent& evt);
+
+	bool frameRenderingQueued(const Ogre::FrameEvent& evt);
+
 private:
 	Ogre::SceneNode* camNode; // Almacena el nodo de la cámara
 	float moveSpeed; // Velocidad de movimiento de la cámara
+	float elapsedTime = 0.0f;
+	float gameTimeLimit = 300.0f;
+
 };
 
 SnowBoarding::SnowBoarding() : OgreBites::ApplicationContext("SnowBoarding"), moveSpeed(5.0f) {}
@@ -62,19 +69,18 @@ void SnowBoarding::setup() {
 	camNode->pitch(Ogre::Degree(-15));
 	camNode->setPosition(0, 250, -40);
 	camNode->attachObject(cam);
-
 	Ogre::Viewport* viewport = getRenderWindow()->addViewport(cam);
 	viewport->setBackgroundColour(Ogre::ColourValue(0.1f, 0.2f, 0.5f));
 	
 	// player
-	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "brick.obj");
+	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "Penguin.obj");
+	//playerEntity->setMaterialName("Penguin");
 	Ogre::SceneNode* playerNode = scnMgr->createSceneNode();
 	Rider* player = new Rider(playerNode, camNode);
 	
 	scnMgr->getRootSceneNode()->addChild(playerNode);
 	player->setPosition(Ogre::Vector3(10,0,0));
-	playerNode->pitch(Ogre::Degree(90));
-	playerNode->scale(Ogre::Vector3(0.5, 0.5, 0.5));
+	playerNode->scale(Ogre::Vector3(0.04, 0.04, 0.04));
 	playerNode->attachObject(playerEntity);
 
 	addInputListener(player);
@@ -83,7 +89,7 @@ void SnowBoarding::setup() {
 	// Map
 	// Crear un material con una textura
 	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().create("GroundMaterial", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-	material->getTechnique(0)->getPass(0)->createTextureUnitState("grass.jpg");
+	material->getTechnique(0)->getPass(0)->createTextureUnitState("snow.jpg");
 	material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
 
 	// Ground
@@ -114,8 +120,6 @@ void SnowBoarding::setup() {
 		}
 		ground->triangle(i, i+numFilas, i+1);
 		ground->triangle(i+1, i+numFilas, i+numFilas+1);
-		std::cout << i << " " << i + numFilas << " " << i + 1 << std::endl;
-		std::cout << i+1 << " " << i + numFilas << " " << i + numFilas + 1 << std::endl;
 	}
 
 	ground->end();
@@ -143,6 +147,20 @@ void SnowBoarding::setup() {
 	//addInputListener(player);
 	root->addFrameListener(ramp1);
 
+	// Tree
+	Ogre::Entity* tree1Entity = scnMgr->createEntity("tree1", "tree.obj");
+	Ogre::SceneNode* tree1Node = scnMgr->createSceneNode();
+	tree1Node->scale(Ogre::Vector3(0.5, 0.5, 0.5));
+	Tree* tree1 = new Tree(tree1Node, player, Ogre::Vector3(10, altura(10, 150) + 2, 150));
+	tree1->setup();
+	scnMgr->getRootSceneNode()->addChild(tree1Node);
+
+	tree1Node->attachObject(tree1Entity);
+	root->addFrameListener(tree1);
+
+
+
+
 }
 
 bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
@@ -150,6 +168,18 @@ bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
 		getRoot()->queueEndRendering();
 	}
 	return true;
+}
+
+bool SnowBoarding::frameRenderingQueued(const Ogre::FrameEvent& evt) {
+	elapsedTime += evt.timeSinceLastFrame;
+
+	// Calcula el tiempo restante
+	float remainingTime = gameTimeLimit - elapsedTime;
+	if (remainingTime < 0.0f) remainingTime = 0.0f;
+
+	std::cout << "Tiempo restante: " << remainingTime << " segundos" << std::endl;
+	return OgreBites::ApplicationContext::frameRenderingQueued(evt);
+
 }
 
 int main() {
