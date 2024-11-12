@@ -4,3 +4,6 @@
 [submodule "ThirdParty/rapidcsv"]
 	path = ThirdParty/rapidcsv
 	url = git@github.com:d99kris/rapidcsv.git
+[submodule "ThirdParty/miniaudio"]
+	path = ThirdParty/miniaudio
+	url = git@github.com:mackron/miniaudio.git
