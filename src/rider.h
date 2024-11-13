@@ -21,6 +21,7 @@ public:
     bool keyReleased(const OgreBites::KeyboardEvent& evt);
     bool axisMoved(const OgreBites::AxisEvent& evt);
     bool frameStarted(const Ogre::FrameEvent& evt);
+
 private:
     Ogre::SceneNode* mNode;
     Ogre::SceneNode* mCamNode;
@@ -38,7 +39,6 @@ private:
     State state = State::Normal;
 
     //audio
-
     ma_sound* collisionSound;
     ma_sound* rampSound;
 };

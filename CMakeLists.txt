@@ -130,3 +130,6 @@
     set_target_properties( 1080SnowBoarding
         PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin
     )
+
+    set(MY_ASSET_PATH "${CMAKE_SOURCE_DIR}/assets")
+    add_compile_definitions(ASSETS_PATH="${MY_ASSET_PATH}")

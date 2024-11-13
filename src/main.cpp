@@ -65,23 +65,24 @@ void SnowBoarding::setup() {
 
 	// Initialize miniaudio engine
 	ma_engine_init(NULL, &engine);
-	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/silly-pups-in-snow.mp3", 0, NULL, NULL, &music);
-	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-short-explosion.wav", 0, NULL, NULL, &collisionSound);
-	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-retro-game-notification.wav", 0, NULL, NULL, &rampSound);
-	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-cheering-crowd-loud-whistle.wav", 0, NULL, NULL, &winSound);
-	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-player-losing-or-failing.wav", 0, NULL, NULL, &loseSound);
-	// Play the music
+	ma_sound_init_from_file(&engine, (ASSETS_PATH + std::string("/audio/silly-pups-in-snow.mp3")).c_str(), 0, NULL, NULL, &music);
+	ma_sound_init_from_file(&engine, (ASSETS_PATH + std::string("/audio/mixkit-short-explosion.wav")).c_str(), 0, NULL, NULL, &collisionSound);
+	ma_sound_init_from_file(&engine, (ASSETS_PATH + std::string("/audio/mixkit-retro-game-notification.wav")).c_str(), 0, NULL, NULL, &rampSound);
+	ma_sound_init_from_file(&engine, (ASSETS_PATH + std::string("/audio/mixkit-cheering-crowd-loud-whistle.wav")).c_str(), 0, NULL, NULL, &winSound);
+	ma_sound_init_from_file(&engine, (ASSETS_PATH + std::string("/audio/mixkit-player-losing-or-failing.wav")).c_str(), 0, NULL, NULL, &loseSound);
 
+	// Play the music
 	ma_sound_start(&music);
+
 	// light
 	Ogre::Light* light = scnMgr->createLight("MainLight");
 	light->setType(Ogre::Light::LightTypes::LT_POINT);
 	light->setCastShadows(true);
 
 	// Ajusta la intensidad de la luz
-	light->setDiffuseColour(0.3f, 0.3f, 0.3f); // Color difuso ligeramente menor
-	light->setSpecularColour(0.1f, 0.1f, 0.1f); // Color especular (blanco brillante)
-	light->setPowerScale(5.0f); // Aumenta la intensidad de la luz
+	light->setDiffuseColour(0.3f, 0.3f, 0.3f); 
+	light->setSpecularColour(0.1f, 0.1f, 0.1f);
+	light->setPowerScale(5.0f);
 
 	Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	lightNode->setDirection(0, -1, 0);
@@ -102,7 +103,6 @@ void SnowBoarding::setup() {
 	
 	// player
 	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "Penguin.obj");
-	//playerEntity->setMaterialName("Penguin");
 	Ogre::SceneNode* playerNode = scnMgr->createSceneNode();
 	RiderNode = playerNode;
 	Rider* player = new Rider(playerNode, camNode, &collisionSound, &rampSound);
@@ -116,7 +116,6 @@ void SnowBoarding::setup() {
 	root->addFrameListener(player);
 
 	// Map
-	// Crear un material con una textura
 	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().create("GroundMaterial", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 	material->getTechnique(0)->getPass(0)->createTextureUnitState("snow.jpg");
 	material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
@@ -126,14 +125,14 @@ void SnowBoarding::setup() {
 	ground->begin("GroundMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
 	ground->setCastShadows(false);
-	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/map.csv");
+	rapidcsv::Document doc((ASSETS_PATH + std::string("/map/map.csv")).c_str());
 
 	std::vector<float> xCoords = doc.GetColumn<float>("x");
 	std::vector<float> yCoords = doc.GetColumn<float>("y");
 	std::vector<float> zCoords = doc.GetColumn<float>("z");
 
 	int numColumnas = 120;
-	int numFilas = 8;
+	int numFilas = 10;
 
 	for (size_t i = 0; i < xCoords.size(); ++i) {
 		ground->position(xCoords[i], yCoords[i], zCoords[i]);
@@ -178,7 +177,6 @@ void SnowBoarding::setup() {
 	}
 
 	// Tree
-	
 	Ogre::Entity* trees[20];
 	Ogre::SceneNode* treesNodes[20];
 
@@ -206,10 +204,7 @@ bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
 bool SnowBoarding::frameRenderingQueued(const Ogre::FrameEvent& evt) {
 	elapsedTime += evt.timeSinceLastFrame;
 
-	// Calcula el tiempo restante
 	float remainingTime = gameTimeLimit - elapsedTime;
-
-	// Caso de perder
 	if (remainingTime <= 0.0f && !soundPlayed) {
 		std::cout << "PERDISTE" << std::endl;
 		ma_sound_stop(&music);
@@ -220,7 +215,6 @@ bool SnowBoarding::frameRenderingQueued(const Ogre::FrameEvent& evt) {
 		soundPlayed = true;  // Marca que el sonido de perder ha sido reproducido
 	}
 
-	// Caso de ganar
 	else if (RiderNode->getPosition().z >= 1100 && !soundPlayed) {
 		std::cout << "GANASTE" << std::endl;
 		ma_sound_start(&winSound);
@@ -233,12 +227,10 @@ bool SnowBoarding::frameRenderingQueued(const Ogre::FrameEvent& evt) {
 	// Si el sonido ha sido reproducido, espera a que termine antes de finalizar
 	if (soundPlayed && (elapsedTime - waitStartTime) >= soundDuration) {
 		std::cout << "Terminando el juego..." << std::endl;
-		gameOver = true;  // Marca el fin del juego
-		return false;  // Detiene el ciclo de renderizado
+		gameOver = true;
+		return false; 
 	}
-
-	// Muestra el tiempo restante en caso de que no se haya ganado ni perdido
-	//std::cout << "Tiempo restante: " << remainingTime << " segundos" << std::endl;
+	std::cout << "Tiempo restante: " << remainingTime << " segundos" << std::endl;
 	return OgreBites::ApplicationContext::frameRenderingQueued(evt);
 }
 

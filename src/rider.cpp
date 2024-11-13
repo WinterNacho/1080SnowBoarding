@@ -120,11 +120,13 @@ bool Rider::frameStarted(const Ogre::FrameEvent& evt) {
         {
         case DirectionX::Left:
             riderPos.x = std::min(20.5f, riderPos.x + xSpeed * dt);
+            if (riderPos.x <  20.5f)
             mCamNode->roll(Ogre::Degree(0.2));
             break;
         case DirectionX::Right:
             riderPos.x = std::max(0.5f, riderPos.x - xSpeed * dt);
-            mCamNode->roll(Ogre::Degree(-0.2));
+            if(riderPos.x > 0.5f)
+                mCamNode->roll(Ogre::Degree(-0.2));
             break;
         }
         

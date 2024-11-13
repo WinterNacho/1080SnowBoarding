@@ -19,6 +19,5 @@ private:
     Ogre::Vector3 minCorner = Ogre::Vector3(-3, -5, -3);
     Ogre::Vector3 maxCorner = Ogre::Vector3(3, 5, 3);
 
-
 };
 

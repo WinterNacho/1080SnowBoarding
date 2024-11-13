@@ -17,8 +17,4 @@ private:
     Ogre::Vector3 position;
     Ogre::Vector3 minCorner = Ogre::Vector3(-4, -5, -3);
     Ogre::Vector3 maxCorner = Ogre::Vector3(4, 5, 3);
-
-
 };
-
-
