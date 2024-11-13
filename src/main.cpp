@@ -9,6 +9,10 @@
 #include "ramp.h"
 #include "tree.h"
 #include "utils.h"
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+#include <stdio.h>
+
 
 class SnowBoarding : public OgreBites::ApplicationContext, public OgreBites::InputListener {
 public:
@@ -21,10 +25,24 @@ public:
 	bool frameRenderingQueued(const Ogre::FrameEvent& evt);
 
 private:
-	Ogre::SceneNode* camNode; // Almacena el nodo de la cámara
-	float moveSpeed; // Velocidad de movimiento de la cámara
+	Ogre::SceneNode* camNode; 
+	Ogre::SceneNode* RiderNode;
+	float moveSpeed; 
 	float elapsedTime = 0.0f;
-	float gameTimeLimit = 300.0f;
+	float gameTimeLimit = 30.0f;
+
+	bool soundPlayed = false; 
+	float waitStartTime = 0.0f; 
+	float soundDuration = 3.0f;     
+	bool gameOver = false;
+
+	// miniaudio variables
+	ma_engine engine;  // Audio engine
+	ma_sound music;
+	ma_sound collisionSound;
+	ma_sound rampSound;
+	ma_sound winSound;
+	ma_sound loseSound;
 
 };
 
@@ -39,11 +57,22 @@ void SnowBoarding::setup() {
 	// Pointer to the root
 	Ogre::Root* root = getRoot();
 	Ogre::SceneManager* scnMgr = root->createSceneManager();
+	scnMgr->setAmbientLight(Ogre::ColourValue(0, 0, 0));
 
 	// Register the scene with the RTShaderSystem
 	Ogre::RTShader::ShaderGenerator* shadergen = Ogre::RTShader::ShaderGenerator::getSingletonPtr();
 	shadergen->addSceneManager(scnMgr);
 
+	// Initialize miniaudio engine
+	ma_engine_init(NULL, &engine);
+	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/silly-pups-in-snow.mp3", 0, NULL, NULL, &music);
+	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-short-explosion.wav", 0, NULL, NULL, &collisionSound);
+	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-retro-game-notification.wav", 0, NULL, NULL, &rampSound);
+	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-cheering-crowd-loud-whistle.wav", 0, NULL, NULL, &winSound);
+	ma_sound_init_from_file(&engine, "C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/audio/mixkit-player-losing-or-failing.wav", 0, NULL, NULL, &loseSound);
+	// Play the music
+
+	ma_sound_start(&music);
 	// light
 	Ogre::Light* light = scnMgr->createLight("MainLight");
 	light->setType(Ogre::Light::LightTypes::LT_POINT);
@@ -54,10 +83,9 @@ void SnowBoarding::setup() {
 	light->setSpecularColour(0.1f, 0.1f, 0.1f); // Color especular (blanco brillante)
 	light->setPowerScale(5.0f); // Aumenta la intensidad de la luz
 
-
 	Ogre::SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	lightNode->setDirection(0, -1, 0);
-	lightNode->setPosition(10, 40, -10);
+	lightNode->setPosition(-20, 40, 0);
 	lightNode->attachObject(light);
 
 	// Camera
@@ -76,7 +104,8 @@ void SnowBoarding::setup() {
 	Ogre::Entity* playerEntity = scnMgr->createEntity("player", "Penguin.obj");
 	//playerEntity->setMaterialName("Penguin");
 	Ogre::SceneNode* playerNode = scnMgr->createSceneNode();
-	Rider* player = new Rider(playerNode, camNode);
+	RiderNode = playerNode;
+	Rider* player = new Rider(playerNode, camNode, &collisionSound, &rampSound);
 	
 	scnMgr->getRootSceneNode()->addChild(playerNode);
 	player->setPosition(Ogre::Vector3(10,0,0));
@@ -96,7 +125,7 @@ void SnowBoarding::setup() {
 	Ogre::ManualObject* ground = scnMgr->createManualObject("Ground");
 	ground->begin("GroundMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
-
+	ground->setCastShadows(false);
 	rapidcsv::Document doc("C:/dev/arq-motores/1080SnowBoarding_/1080SnowBoarding/assets/map/map.csv");
 
 	std::vector<float> xCoords = doc.GetColumn<float>("x");
@@ -128,39 +157,43 @@ void SnowBoarding::setup() {
 	Ogre::SceneNode* groundNode = scnMgr->getRootSceneNode()->createChildSceneNode();
 	groundNode->attachObject(ground);
 
-	scnMgr->setSkyBox(true, "skybox", 100);
-
+	scnMgr->setSkyBox(true, "SnowBoarding/Skybox", 2000);
 
 	// ramp
-	Ogre::Entity* ramp1Entity = scnMgr->createEntity("ramp1", "ramp.obj");
-	Ogre::SceneNode* ramp1Node = scnMgr->createSceneNode();
-	ramp1Node->yaw(Ogre::Degree(90));
-	ramp1Node->pitch(Ogre::Degree(-90));
-	Ramp* ramp1 = new Ramp(ramp1Node, player, Ogre::Vector3(10, altura(10, 70), 70));
-	ramp1->setup();
-	scnMgr->getRootSceneNode()->addChild(ramp1Node);
-	//player->setPosition(Ogre::Vector3(10, 0, 0));
-	//playerNode->pitch(Ogre::Degree(90));
-	//playerNode->scale(Ogre::Vector3(0.5, 0.5, 0.5));
-	ramp1Node->attachObject(ramp1Entity);
-
-	//addInputListener(player);
-	root->addFrameListener(ramp1);
+	Ogre::Entity* ramps[5];
+	Ogre::SceneNode* rampssNodes[5];
+	Ramp* rampsActors[5];
+	std::srand(std::time(0));
+	for (int i = 0; i < 4; i++) {
+		float posX = 2.0 + static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX / 16.0));
+		ramps[i] = scnMgr->createEntity("Ramp" + Ogre::StringConverter::toString(i), "ramp.obj");
+		ramps[i]->setMaterialName("Basics/Red");
+		rampssNodes[i] = scnMgr->getRootSceneNode()->createChildSceneNode("Ramp" + Ogre::StringConverter::toString(i) + "Node");
+		rampssNodes[i]->yaw(Ogre::Degree(90));
+		rampssNodes[i]->pitch(Ogre::Degree(-90));
+		rampsActors[i] = new Ramp(rampssNodes[i], player, Ogre::Vector3(posX, altura(posX, 100 + i * 230)-1, 100 + i * 230));
+		rampsActors[i]->setup();
+		rampssNodes[i]->attachObject(ramps[i]);
+		root->addFrameListener(rampsActors[i]);
+	}
 
 	// Tree
-	Ogre::Entity* tree1Entity = scnMgr->createEntity("tree1", "tree.obj");
-	Ogre::SceneNode* tree1Node = scnMgr->createSceneNode();
-	tree1Node->scale(Ogre::Vector3(0.5, 0.5, 0.5));
-	Tree* tree1 = new Tree(tree1Node, player, Ogre::Vector3(10, altura(10, 150) + 2, 150));
-	tree1->setup();
-	scnMgr->getRootSceneNode()->addChild(tree1Node);
+	
+	Ogre::Entity* trees[20];
+	Ogre::SceneNode* treesNodes[20];
 
-	tree1Node->attachObject(tree1Entity);
-	root->addFrameListener(tree1);
-
-
-
-
+	Tree* treesActors[20];
+	for (int i = 0; i < 20; i++) {
+		float posX = 2.0 + static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX / 16.0));
+		trees[i] = scnMgr->createEntity("Tree" + Ogre::StringConverter::toString(i), "tree.obj");
+		treesNodes[i] = scnMgr->getRootSceneNode()->createChildSceneNode("Tree" + Ogre::StringConverter::toString(i) + "Node");
+		treesNodes[i]->scale(Ogre::Vector3(0.5, 0.5, 0.5));
+		treesActors[i] = new Tree(treesNodes[i], player, Ogre::Vector3(posX, altura(posX, 150 + i * 50) + 2, 150+i*50));
+		treesActors[i]->setup();
+		treesNodes[i]->attachObject(trees[i]);
+		root->addFrameListener(treesActors[i]);
+	}
+	
 }
 
 bool SnowBoarding::keyPressed(const OgreBites::KeyboardEvent& evt) {
@@ -175,12 +208,40 @@ bool SnowBoarding::frameRenderingQueued(const Ogre::FrameEvent& evt) {
 
 	// Calcula el tiempo restante
 	float remainingTime = gameTimeLimit - elapsedTime;
-	if (remainingTime < 0.0f) remainingTime = 0.0f;
 
-	std::cout << "Tiempo restante: " << remainingTime << " segundos" << std::endl;
+	// Caso de perder
+	if (remainingTime <= 0.0f && !soundPlayed) {
+		std::cout << "PERDISTE" << std::endl;
+		ma_sound_stop(&music);
+		ma_sound_start(&loseSound);
+
+		// Marca el inicio del temporizador para esperar el sonido
+		waitStartTime = elapsedTime;
+		soundPlayed = true;  // Marca que el sonido de perder ha sido reproducido
+	}
+
+	// Caso de ganar
+	else if (RiderNode->getPosition().z >= 1100 && !soundPlayed) {
+		std::cout << "GANASTE" << std::endl;
+		ma_sound_start(&winSound);
+
+		// Marca el inicio del temporizador para esperar el sonido
+		waitStartTime = elapsedTime;
+		soundPlayed = true;  // Marca que el sonido de ganar ha sido reproducido
+	}
+
+	// Si el sonido ha sido reproducido, espera a que termine antes de finalizar
+	if (soundPlayed && (elapsedTime - waitStartTime) >= soundDuration) {
+		std::cout << "Terminando el juego..." << std::endl;
+		gameOver = true;  // Marca el fin del juego
+		return false;  // Detiene el ciclo de renderizado
+	}
+
+	// Muestra el tiempo restante en caso de que no se haya ganado ni perdido
+	//std::cout << "Tiempo restante: " << remainingTime << " segundos" << std::endl;
 	return OgreBites::ApplicationContext::frameRenderingQueued(evt);
-
 }
+
 
 int main() {
 	try {

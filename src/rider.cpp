@@ -4,32 +4,32 @@
 
 bool Rider::keyPressed(const OgreBites::KeyboardEvent& evt) {
     if (evt.keysym.sym == OgreBites::SDLK_LEFT or evt.keysym.sym == 'a')
-        direction = Direction::Left;
+        directionX = DirectionX::Left;
 
     if (evt.keysym.sym == OgreBites::SDLK_RIGHT or evt.keysym.sym == 'd')
-        direction = Direction::Right;
+        directionX = DirectionX::Right;
 
     if (evt.keysym.sym == OgreBites::SDLK_UP or evt.keysym.sym == 'w')
-        direction = Direction::Up;
+        directionZ = DirectionZ::Up;
 
     if (evt.keysym.sym == OgreBites::SDLK_DOWN or evt.keysym.sym == 's')
-        direction = Direction::Down;
+        directionZ = DirectionZ::Down;
 
     return true;
 }
 
 bool Rider::keyReleased(const OgreBites::KeyboardEvent& evt) {
-    if ((evt.keysym.sym == OgreBites::SDLK_LEFT or evt.keysym.sym == 'a') and direction == Direction::Left)
-        direction = Direction::None;
+    if ((evt.keysym.sym == OgreBites::SDLK_LEFT or evt.keysym.sym == 'a') and directionX == DirectionX::Left)
+        directionX = DirectionX::None;
 
-    if ((evt.keysym.sym == OgreBites::SDLK_RIGHT or evt.keysym.sym == 'd') and direction == Direction::Right)
-        direction = Direction::None;
+    if ((evt.keysym.sym == OgreBites::SDLK_RIGHT or evt.keysym.sym == 'd') and directionX == DirectionX::Right)
+        directionX = DirectionX::None;
 
-    if ((evt.keysym.sym == OgreBites::SDLK_UP or evt.keysym.sym == 'w') and direction == Direction::Up)
-        direction = Direction::None;
+    if ((evt.keysym.sym == OgreBites::SDLK_UP or evt.keysym.sym == 'w') and directionZ == DirectionZ::Up)
+        directionZ = DirectionZ::None;
 
-    if ((evt.keysym.sym == OgreBites::SDLK_DOWN or evt.keysym.sym == 's') and direction == Direction::Down)
-        direction = Direction::None;
+    if ((evt.keysym.sym == OgreBites::SDLK_DOWN or evt.keysym.sym == 's') and directionZ == DirectionZ::Down)
+        directionZ = DirectionZ::None;
 
     return true;
 }
@@ -52,8 +52,15 @@ void Rider::collision(State st) {
     switch (st)
     {
     case State::Stunned:
+        if(state != st)
+            ma_sound_start(collisionSound);
+        if (state == st)
+            break;
+        mNode->yaw(Ogre::Radian(90));
+        inmuneTimer = 0;
         break;
     case State::Jumped:
+        ma_sound_start(rampSound);
         ySpeed = 35.0;
         break;
     }
@@ -64,18 +71,23 @@ void Rider::collision(State st) {
 bool Rider::axisMoved(const OgreBites::AxisEvent& evt) {
     unsigned int axisKey = static_cast<unsigned int>(evt.axis);
 
-    // only checking one specific axis
-    if (axisKey != 0)
-        return true;
+    if (axisKey == 0) {
+        if (evt.value < -10000)
+            directionX = DirectionX::Left;
+        else if (evt.value > 10000)
+            directionX = DirectionX::Right;
+        else
+            directionX = DirectionX::None;
+    }
 
-    if (evt.value < -10000)
-        direction = Direction::Left;
-
-    else if (evt.value > 10000)
-        direction = Direction::Right;
-
-    else
-        direction = Direction::None;
+    else if (axisKey == 1) {
+        if (evt.value < -10000)
+            directionZ = DirectionZ::Up; 
+        else if (evt.value > 10000)
+            directionZ = DirectionZ::Down;
+        else
+            directionZ = DirectionZ::None;
+    }
 
     return true;
 }
@@ -85,44 +97,50 @@ bool Rider::frameStarted(const Ogre::FrameEvent& evt) {
     switch (state)
     {
     case State::Stunned:
-        zSpeed = 0.0;
+        zSpeed = 10.0;
+        mNode->roll(Ogre::Radian(0.05));
+        if (inmuneTimer >= 3) {
+            mNode->setOrientation(Ogre::Quaternion::IDENTITY);
+            state = State::Normal;
+        }
         break;
 
     case State::Jumped:
-        zSpeed =80.0;
+        zSpeed = 80.0;
         mNode->pitch(Ogre::Radian(0.22));
-        mPitch += 0.22;
         if (altura(riderPos.x, riderPos.z) >= riderPos.y) {
             state = State::Normal;
-            mNode->pitch(Ogre::Radian(-mPitch));
+            mNode->setOrientation(Ogre::Quaternion::IDENTITY);
         }
         break;
+        
     case State::Normal:
-        zSpeed = 30.0;
-        switch (direction)
+        zSpeed = 40.0;
+        switch (directionX)
         {
-        case Direction::Left:
+        case DirectionX::Left:
             riderPos.x = std::min(20.5f, riderPos.x + xSpeed * dt);
             mCamNode->roll(Ogre::Degree(0.2));
             break;
-        case Direction::Right:
+        case DirectionX::Right:
             riderPos.x = std::max(0.5f, riderPos.x - xSpeed * dt);
             mCamNode->roll(Ogre::Degree(-0.2));
             break;
-        case Direction::Up:
+        }
+        
+        switch (directionZ) {
+        case DirectionZ::Up:
             riderPos.z = riderPos.z + xSpeed * dt;
             break;
-        case Direction::Down:
+        case DirectionZ::Down:
             riderPos.z = riderPos.z - xSpeed * dt;
             break;
         }
-        break;
+       
     }
     riderPos.z += zSpeed * dt;
     setPosition(Ogre::Vector3(riderPos.x, std::max(altura(riderPos.x, riderPos.z), riderPos.y + ySpeed*dt), riderPos.z));
     ySpeed -= gravity * dt;
-
-    // roll
-    //mCamNode->roll(Ogre::Degree(mRoll));
+    inmuneTimer += dt;
     return true;
 }

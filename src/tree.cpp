@@ -1,5 +1,5 @@
 #include "tree.h"
-#include <iostream>
+
 
 void Tree::setup() {
     mNode->setPosition(position);

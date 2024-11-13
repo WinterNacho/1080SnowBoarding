@@ -48,8 +48,6 @@
     option(OGRE_INSTALL_TOOLS "" OFF)
     add_subdirectory("ThirdParty/ogre")
     add_subdirectory("ThirdParty/rapidcsv")
-    
-
     # At the end of Ogre cmake configuration, you will get the following 
     # (or similar) summary printed:
     #[[
@@ -79,12 +77,14 @@
 
     add_executable(1080SnowBoarding
         "src/main.cpp"
-        # "src/ball.cpp"
-        # "src/brick.cpp"
-        # "src/player.cpp"
-        # "src/ball.h"
-        # "src/brick.h"
-        # "src/player.h"
+        "src/rider.cpp"
+        "src/rider.h"
+        "src/utils.cpp"
+        "src/utils.h"
+        "src/ramp.cpp"
+        "src/ramp.h"
+        "src/tree.cpp"
+        "src/tree.h"
     )
 
     set_property(TARGET 1080SnowBoarding PROPERTY CXX_STANDARD 20)
@@ -95,10 +95,8 @@
         "${CMAKE_INSTALL_PREFIX}/include/OGRE"
         "${CMAKE_INSTALL_PREFIX}/include/OGRE/Bites"
         "${CMAKE_INSTALL_PREFIX}/include/OGRE/RTShaderSystem"
-        #"${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/ogre/Components/Bites/include"
-        #"${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/ogre/OgreMain/include"
-        #"${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/ogre/Components/RTShaderSystem/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/rapidcsv/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/miniaudio"
     )
     target_link_libraries(1080SnowBoarding PRIVATE
         OgreBites
