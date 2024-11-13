@@ -1,0 +1,21 @@
+material GroundMaterial
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture snow.jpg
+            }
+
+            lighting on
+            ambient 0.3 0.3 0.3        // Mayor iluminación ambiental
+            diffuse 0.8 0.8 0.8        // Mayor iluminación difusa
+            specular 1.0 1.0 1.0 1.0   // Iluminación especular más alta
+            shininess 20
+            shading gouraud
+            receive_shadows on
+        }
+    }
+}
