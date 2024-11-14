@@ -29,6 +29,19 @@ Los controles para el joystick son los siguientes:
 2. Los controles son automáticos, por lo que el juego detectará tu dispositivo de entrada y te permitirá usarlo de inmediato.
 3. Puedes configurar o personalizar los controles según lo necesites, siguiendo las instrucciones en el código del proyecto.
 
+## Créditos de Assets
+
+### Modelos 3D
+- **Penguin** - [Penguin V2](https://free3d.com/3d-model/penguin-v2--128210.html) de free3d.com
+- **Tree** - [Low Poly Snowy Tree](https://free3d.com/3d-model/low-poly-snowy-tree-134146.html) de free3d.com
+- **Rampa** - Diseñada por mi en Blender :)
+
+### Texturas
+- **Skybox** - [Cielo PNG](https://www.pngwing.com/es/free-png-dcabk/download) de pngwing.com
+
+### Sonidos
+- **Música** - [Silly Pups in Snow](https://pixabay.com/es/music/melodias-para-ninos-felices-silly-pups-in-snow-222528/) de pixabay.com
+- **Efectos de Sonido** - [Mixkit](https://mixkit.co)
 
 
 
